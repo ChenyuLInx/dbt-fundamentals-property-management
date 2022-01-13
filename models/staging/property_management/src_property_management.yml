@@ -1,0 +1,293 @@
+version: 2
+
+sources:
+  - name: property_management
+    database: raw
+    schema: property_management
+    loaded_at_field: UPLOADED_AT
+    freshness:
+      warn_after: {count: 1, period: day}
+      error_after: {count: 2, period: day}
+    tables:
+      - name: rental_applications
+        description: application source
+        columns:
+          - name: id
+            description: identifier for application
+            tests:
+              - unique
+              - not_null
+      - name: email_delivery_statuses
+        description: email delivery statuses source
+        columns:
+          - name: id
+            tests:
+              - unique
+              - not_null
+      - name: emails
+        columns:
+          - name: id
+            tests:
+              - unique
+              - not_null
+      - name: tenants
+        columns:
+          - name: id
+            tests:
+              - unique
+              - not_null
+      - name: properties 
+        columns:
+          - name: id
+            tests:
+              - unique
+              - not_null
+      - name: leases
+        columns:
+          - name: id
+            tests:
+              - unique
+              - not_null
+      - name: property_owners
+        columns:
+          - name: id
+            tests:
+              - unique
+              - not_null
+      - name: bank_accounts
+        columns:
+          - name: id
+            tests:
+              - unique
+              - not_null
+      - name: contact_infos
+        columns:
+          - name: id
+            tests:
+              - unique
+              - not_null
+      - name: owners
+        columns:
+          - name: id
+            tests:
+              - unique
+              - not_null
+      - name: vendors
+        columns:
+          - name: id
+            tests:
+              - unique
+              - not_null
+      - name: units
+        columns:
+          - name: id
+            tests:
+              - unique
+              - not_null
+      - name: transactions
+        columns:
+          - name: id
+            tests:
+              - unique
+              - not_null
+
+models:
+  - name: stg_bank_accounts
+    description: all bank accounts
+    columns:
+      - name: bank_account_id
+        description: identifier for a bank account
+        tests:
+          - unique
+          - not_null
+
+  - name: stg_contact_infos
+    description: contact infos for all we know
+    columns:
+      - name: contact_id
+        description: identifier for a contact
+        tests:
+        - unique
+        - not_null
+
+  - name: stg_email_delivery_statuses
+    description: email delivery events
+    columns:
+      - name: id
+        description: identifier for a event
+        tests:
+        - unique
+        - not_null
+      - name: email_event
+        description: event type
+        tests:
+          - accepted_values:
+              values: ['processing', 'delivered', 'opened', 'rejected', 'clicked', 'processed']
+      - name: email_id
+        description: email id of the given event
+        tests:
+        - relationships:
+            to: ref('stg_emails')
+            field: email_id
+
+  - name: stg_emails
+    description: email sent to people
+    columns:
+      - name: email_id
+        description: identifier for a email
+        tests:
+        - unique
+        - not_null
+
+  - name: stg_leases
+    description: all of the lease
+    columns:
+      - name: lease_id
+        description: identifier for the lease
+        tests:
+        - unique
+        - not_null
+      - name: completed
+        description: whether a lease is finished
+        tests:
+          - accepted_values:
+              values: ['TRUE', 'FALSE']
+
+  - name: stg_owners
+    description: all owners that has property
+    columns:
+      - name: owner_id
+        description: identifier for owner
+        tests:
+        - unique
+        - not_null
+      - name: contact_info_id
+        description: contact idendifier for the current owner
+        tests:
+        - relationships:
+            to: ref('stg_contact_infos')
+            field: contact_id
+      - name: bank_account_id
+        description: id to find the bank info for current owner
+        tests:
+        - relationships:
+            to: ref('stg_bank_accounts')
+            field: bank_account_id
+    
+  - name: stg_properties
+    description: property catalog
+    columns:
+      - name: property_id
+        description: id for the property
+        tests:
+        - unique
+        - not_null
+        - relationships:
+              to: ref('stg_units')
+              field: property_id
+
+    
+  - name: stg_property_owners
+    description: '{{doc("property_owners")}}'
+    columns:
+      - name: id
+        tests:
+        - unique
+        - not_null
+      - name: property_id
+        tests:
+        - relationships:
+              to: ref('stg_properties')
+              field: property_id
+
+  - name: stg_rental_applications
+    description: application catalog
+    columns:
+      - name: application_id
+        description: id for application
+        tests:
+        - unique
+        - not_null
+      - name: application_status
+        description: status for application
+        tests:
+          - accepted_values:
+              values: ['approved', 'denied', 'converted_to_tenant']
+
+  
+  - name: stg_tenants
+    description: tenants catalog
+    columns:
+      - name: id
+        description: identifier
+        tests:
+        - unique
+        - not_null
+      - name: contact_info_id
+        description:  id to find the contact info
+        tests:
+        - relationships:
+            to: ref('stg_contact_infos')
+            field: contact_id
+        - relationships:
+              to: ref('stg_rental_applications')
+              field: contact_info_id
+      - name: bank_account_id
+        description: id to find bank account
+        tests:
+        - relationships:
+            to: ref('stg_bank_accounts')
+            field: bank_account_id
+      - name: lease_id
+        description: id to find the lease
+        tests:
+        - relationships:
+            to: ref('stg_leases')
+            field: lease_id
+    
+  - name: stg_transactions
+    description: transaction events
+    columns:
+      - name: transaction_id
+        description: identifier for a transaction
+        tests:
+        - unique
+        - not_null
+    
+  - name: stg_units
+    description: all units here
+    columns:
+      - name: unit_id
+        description:  identifier
+        tests:
+        - unique
+        - not_null
+      - name: unit_status
+        description: status of unit
+        tests:
+          - accepted_values:
+              values: ['occupied', 'rented', 'vacant', 'construction']
+
+  - name: stg_vendors
+    description: all vendors catalog
+    columns:
+      - name: vendor_id
+        description: identifier
+        tests:
+        - unique
+        - not_null
+      - name: bank_account_id
+        description: id to find bank accounts
+        tests:
+        - relationships:
+            to: ref('stg_bank_accounts')
+            field: bank_account_id
+      - name: contact_info_id
+        description: id to find contact info for vendor
+        tests:
+        - relationships:
+            to: ref('stg_contact_infos')
+            field: contact_id
+
+
+    
